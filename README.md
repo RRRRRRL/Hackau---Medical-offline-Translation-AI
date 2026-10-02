@@ -1,0 +1,1 @@
+# Hackau---Medical-offline-Translation-AI
