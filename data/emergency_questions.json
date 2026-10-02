@@ -1,0 +1,5 @@
+[
+  {"id": "breathing", "en": "Can you breathe normally?", "zh": "你能正常呼吸吗？"},
+  {"id": "allergy", "en": "Are you allergic to any medication?", "zh": "你对任何药物过敏吗？"},
+  {"id": "pain", "en": "Where does it hurt?", "zh": "你哪里疼？"}
+]
