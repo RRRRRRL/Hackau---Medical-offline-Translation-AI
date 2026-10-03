@@ -24,6 +24,7 @@ function App() {
   const alive = useRef(true)
   const requests = useRef(new Set())
   const player = useRef(null)
+  const [questionContext, setQuestionContext] = useState('')
 
   async function request(path, options = {}) {
     const controller = new AbortController()
@@ -124,7 +125,11 @@ function App() {
   async function review() {
     setProposal(null); setConfirmed(false); setResult(null); player.current?.pause()
     await task('Requesting an unverified suggestion…', async () => {
-      const data = await jsonPost('/suggest', { text: raw, source_language: source })
+      const data = await jsonPost('/suggest', {
+        text: raw,
+        source_language: source,
+        question_context: questionContext,
+      })
       if (alive.current) setProposal(data)
     })
   }
@@ -166,6 +171,21 @@ function App() {
     {raw && <>
       <section><h2>2. Review the raw transcript</h2><blockquote>{raw}</blockquote>
         {asrMs != null && <p>ASR: {asrMs} ms</p>}
+        <label>
+          Previous question or topic—not an expected answer
+          <input
+            type="text"
+            maxLength={200}
+            value={questionContext}
+            disabled={locked}
+            placeholder="例如：你哪里痛？"
+            onChange={e => {
+              setQuestionContext(e.target.value)
+              setProposal(null)
+              setConfirmed(false)
+            }}
+          />
+        </label>
         <button disabled={locked} onClick={review}>Ask local model for a suggestion</button>
         <p>Optional. You can edit or keep the raw text without the model.</p>
         {proposal && <div className="proposal"><h3>Unverified suggestion · {proposal.status}</h3><p>{proposal.suggested_text}</p>

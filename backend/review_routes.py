@@ -24,6 +24,7 @@ SUFFIXES = {".webm", ".wav", ".ogg", ".mp4", ".m4a"}
 class ReviewRequest(BaseModel):
     text: str = Field(min_length=1, max_length=MAX_TEXT)
     source_language: LANG
+    question_context: str = Field(default="", max_length=200)
 
 class TranslateRequest(BaseModel):
     original_text: str = Field(min_length=1, max_length=MAX_TEXT)
@@ -78,7 +79,11 @@ def suggest(body: ReviewRequest):
     require_local()
     started = time.perf_counter()
     try:
-        result = review_transcript(body.text, body.source_language)
+        result = review_transcript(
+        body.text,
+        body.source_language,
+        body.question_context,
+    )
     except ReviewUnavailable as exc:
         raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
