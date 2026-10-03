@@ -1,207 +1,281 @@
 # FieldTalk
 
-Offline, turn-based speech translation prototype for communication between a first responder and a conscious patient. Built for HacKU 2026 Deep Tech: The Capability That Hasn't Travelled.
+A hackathon prototype for offline, turn-based speech translation between a first responder and a conscious patient, with an optional local AI transcript-review step.
 
-FieldTalk translates communication; it does not diagnose, recommend treatment, or replace a qualified interpreter. Confirm critical details with the patient. Medical accuracy has not been clinically validated.
+FieldTalk is a communication aid, not a diagnostic or treatment system. It has not been clinically validated and does not replace a qualified interpreter. Confirm critical details with the speaker.
 
 ## Current scope
 
-- Runs locally on one laptop: browser UI, Python backend, and model inference.
-- Supports English <-> Mandarin Chinese, English <-> Russian, and Chinese <-> Russian.
-- Language codes: `en`, `zh`, `ru`. Chinese <-> Russian is translated through an English pivot (ru -> en -> zh) because no direct Argos package exists.
-- The frontend offers Quick Questions, Yes / No, Free Conversation, and an explicit patient-stated Handoff. Hold to Speak records one turn; processing begins on release. This is not simultaneous interpretation or streaming captions.
-- Phone deployment is future work, not part of this implementation.
+This README documents the `temp` branch, inspected at commit `fb65e2f`.
+
+- Runs on one laptop using a browser interface, a Python backend and local model inference.
+- Records or uploads a short utterance, displays the raw transcript, and allows editing before translation.
+- Optionally asks a local language model to suggest transcript corrections.
+- Keeps the raw transcript separate from the suggestion and requires explicit human confirmation in the review workflow.
+- Translates confirmed text and generates spoken output using local models.
+- Includes a separate baseline demo without the review stage.
+- Native Android deployment is a separate branch, not this implementation.
+
+### Language status
+
+| Feature                  | Current status                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| English and Mandarin ASR | Accepted by the current speech adapter; requires local model testing                                               |
+| Russian ASR              | Known inconsistency: exposed in the UI/API, but the current `temp` ASR adapter rejects `ru`                        |
+| Translation              | Inherits English, Chinese and Russian translation configuration, including Chinese/Russian routing through English |
+| Piper TTS                | Configured English, Mandarin and Russian voices                                                                    |
+| Local transcript review  | Accepts `en`, `zh` and `ru`; suggestions are unverified                                                            |
+
+Do not describe Russian speech input as working until the adapter restriction is fixed and tested. Chinese support here means Mandarin, not validated Cantonese support. Translation depends on installed Argos packages; verify each intended direction on the demo laptop.
 
 ## Architecture
 
-```text
-React/Vite emergency communication workflows
-  -> multipart POST /process_audio
-  -> FastAPI: ASR -> translation -> TTS
-  -> result JSON + local WAV URL
-  -> browser playback
-```
-
-| Component | Implementation |
-| --- | --- |
-| ASR | Multilingual faster-whisper base, local CPU int8 |
-| Translation | Installed Argos Translate packages; Chinese <-> Russian uses an English pivot |
-| TTS | Cached in-process PiperVoice synthesis |
-| Frontend | React/Vite on localhost |
-
-Keep these interfaces stable:
-
-| Interface | Return |
-| --- | --- |
-| `speech_to_text(audio_path, language=None)` | ASRResult: text, language, confidence |
-| `translate_and_extract(text, source_language, target_language)` | TranslationResult: translation, key_information |
-| `text_to_speech(text, language)` | Local WAV Path |
-| `POST /process_audio` | original_text, translation, confidence, key_information, audio_url, warning, timings_ms, mode |
-
-Confidence is null when no calibrated utterance confidence is available. The emergency NLP hook currently returns an empty object.
-
-## Repository structure
+### Review workflow
 
 ```text
-backend/config.py          Paths, mode, voices, supported pairs
-backend/main.py            API, health checks, audio serving
-backend/models/            ASR, translation, TTS and NLP adapters
-frontend/                  React/Vite emergency workflows and frontend tests
-scripts/download_models.py Online preparation of model assets
-scripts/benchmark_speech.py ASR/TTS timing benchmark
-tests/                     Mock pipeline and dependency-stub tests
-models_local/              Downloaded models, ignored by Git
-generated_audio/           Output WAV files, ignored by Git
+Browser microphone / uploaded recording
+    -> FastAPI recognition endpoint
+    -> faster-whisper raw transcript
+    -> optional local LLM suggestion
+    -> validation guards + visible differences
+    -> user edits and confirms source text
+    -> Argos Translate
+    -> Piper WAV synthesis
+    -> browser playback
 ```
 
-## Prepare the laptop
+The LLM reviews text, not the original audio. It is not the main translation engine, and its suggestions are not evidence that the transcript matches what was spoken.
 
-The commands below use Windows PowerShell from the repository root. Internet is required for dependency and model preparation. Use a current Node.js LTS release compatible with Vite. Python 3.11 or 3.12 is a conservative starting point for a new environment; an existing working environment need not be replaced. Native package wheel availability depends on Python/platform.
+### Technology stack
 
-For a fresh checkout:
+| Layer               | Implementation                                                            |
+| ------------------- | ------------------------------------------------------------------------- |
+| Frontend            | React, Vite, browser MediaRecorder and CSS                                |
+| API                 | Python, FastAPI and Pydantic                                              |
+| ASR                 | faster-whisper / CTranslate2; default multilingual Whisper base, CPU int8 |
+| Translation         | Argos Translate with locally installed packages                           |
+| TTS                 | Piper with cached in-process voice synthesis                              |
+| Optional LLM        | Local llama-server with an OpenAI-compatible chat-completions endpoint    |
+| Chinese review      | pypinyin tone-number rendering and OpenCC script normalization            |
+| Proposal validation | Protected-value checks and Python difflib comparisons                     |
+
+The repository does not pin an LLM weight/model identity in the review request. `fieldtalk-review` is the request's model label, not proof of which weights the running server loaded.
+
+### Transcript-review safeguards
+
+- Presents proposed corrections without automatically replacing the raw transcript.
+- Checks protected numbers, units and selected negation expressions.
+- Blocks proposals when normalized edit similarity falls below 0.65.
+- Converts traditional Chinese to simplified Chinese before protected-value and similarity comparison.
+- Ignores selected punctuation and whitespace when computing similarity, but displays differences between the actual texts.
+- Keeps the original when the model requests repetition or the guards block its proposal.
+- Supports an optional previous-question/topic field, limited to 200 characters.
+- Adds pinyin and a Mandarin-specific prompt for Chinese review.
+- Rejects malformed or incomplete model responses.
+
+These are heuristic guards, not clinical validation. A similarity score is not an accuracy or confidence score. The guards do not guarantee that all medication, allergy or symptom changes are detected.
+
+## Setup and launch
+
+Commands below use Windows PowerShell from the repository root. Prepare dependencies and models while online. If an existing environment already works, reuse it rather than rebuilding it before the demo.
+
+### 1. Get the temp branch
 
 ```powershell
-git clone --branch integration/full-system https://github.com/RRRRRRL/Hackau---Medical-offline-Translation-AI.git
+git clone --branch temp https://github.com/RRRRRRL/Hackau---Medical-offline-Translation-AI.git
 cd Hackau---Medical-offline-Translation-AI
 ```
 
-For a fresh environment (example using installed Python 3.12):
+### 2. Install dependencies
+
+Example for a fresh environment with Python 3.12 installed:
 
 ```powershell
 py -3.12 -m venv .venv
-```
-
-If `.venv` already exists, use it instead of recreating it. Activation is optional because these commands explicitly select its interpreter.
-
-```powershell
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt -r requirements-local.txt
+.\.venv\Scripts\python.exe -m pip install pypinyin opencc-python-reimplemented
 .\.venv\Scripts\python.exe -m pip check
 cd frontend
 npm ci
 cd ..
 ```
 
-`requirements-local.txt` includes `piper-tts>=1.3,<2` for the synthesize_wav API and `av>=16,<19` to avoid the PyAV 19 metadata_errors incompatibility with faster-whisper 1.2.1. Stop and inspect installation errors before continuing. Do not use a different global Python/pip to install backend dependencies.
+The explicit pypinyin/OpenCC installation supplies imports used by the new review module; do not assume the older requirements files cover them. If another compatible OpenCC implementation is already installed, verify its `opencc.OpenCC("t2s.json")` API rather than installing conflicting implementations.
 
-Download assets while online:
+### 3. Prepare speech and translation models
 
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.download_models
 ```
 
-This prepares:
+The default desktop assets include:
 
-- Multilingual Whisper base in `models_local/whisper-base`.
-- Argos packages en->zh, zh->en, en->ru and ru->en.
-- Piper voices `en_US-lessac-medium`, `zh_CN-huayan-medium`, `ru_RU-irina-medium`, each with `.onnx` and `.onnx.json` files in `models_local/voices`.
+- Whisper base under `models_local/whisper-base`.
+- Installed Argos translation packages.
+- Piper voice files under `models_local/voices`, with both `.onnx` and `.onnx.json` metadata.
 
-Keep all downloaded model files. Do not commit weights or patient recordings. The setup script performs network downloads; inference adapters load local assets.
+Configured voices are `en_US-lessac-medium`, `zh_CN-huayan-medium` and `ru_RU-irina-medium`. Keep downloaded assets available after disconnecting the network. Do not commit model weights or private recordings.
 
-## Run real translation
+### 4. Start the optional local LLM
 
-Terminal 1, repository root:
+Supply a compatible local GGUF model. The following is a launch template, not a pinned or verified model configuration:
+
+```powershell
+.\tools\llama\llama-server.exe -m "C:\path\to\your-model.gguf" --host 127.0.0.1 --port 8081
+```
+
+Use a model and chat template appropriate for the languages being demonstrated. The server must support `/health`, `/v1/chat/completions`, and the JSON-schema response format used by `backend/models/transcript_review.py`. Adjust the launch configuration for the selected model and installed server version.
+
+The backend defaults to `http://127.0.0.1:8081`. Its review client permits only HTTP loopback IP addresses and disables proxies and redirects. To change the local port, set `FIELDTALK_LLM_URL` in the backend terminal.
+
+The LLM is optional: the review page allows manual editing and confirmation without requesting a suggestion.
+
+### 5. Start the review backend
+
+In a separate terminal at the repository root:
+
+```powershell
+$env:FIELDTALK_MODE = 'local'
+$env:FIELDTALK_LLM_URL = 'http://127.0.0.1:8081'
+.\.venv\Scripts\python.exe -m uvicorn backend.review_app:app --host 127.0.0.1 --port 8000
+```
+
+Use `backend.review_app:app`, not just `backend.main:app`, to enable the review endpoints. Review endpoints require local mode and reject mock operation.
+
+### 6. Start the review frontend
+
+In another terminal:
+
+```powershell
+cd frontend
+npx vite --config vite.review.config.js
+```
+
+Open the URL printed by Vite and append `/review.html`, normally [the local review page](http://127.0.0.1:5173/review.html). Allow microphone access. Backend port 8000 is not the frontend page.
+
+### Demo workflow
+
+1. Select source and target languages; start with English and Mandarin.
+2. Record a short turn, upload a recording, or use the clearly labelled fictional text-only test.
+3. Inspect the raw transcript.
+4. Optionally enter the previous question/topic and request a local-model suggestion.
+5. Keep the original, edit manually, or copy an acceptable suggestion into the editable text.
+6. Check the text with the speaker, especially medication names, numbers, units and negation.
+7. Tick the confirmation checkbox and translate.
+8. Display the result and play the generated speech.
+
+A fictional text-only test demonstrates review and translation, not ASR. Recording automatically stops after 30 seconds in the review UI. Review text is limited to 600 characters, and uploads are limited to 10 MB.
+
+### Baseline demo and mock mode
+
+For the original pipeline without transcript review:
 
 ```powershell
 $env:FIELDTALK_MODE = 'local'
 .\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-Terminal 2, repository root:
+Then run `npm run dev` from `frontend/` and open the root page. Do not run both backend commands on port 8000 simultaneously.
 
-```powershell
-cd frontend
-npm run dev
+Setting `FIELDTALK_MODE` to `mock` runs the baseline routing demonstration with fixed text and tone audio. Mock mode does not demonstrate recognition, translation quality or real speech synthesis. The review workflow requires `local` mode.
+
+## API and repository layout
+
+### Review endpoints
+
+| Endpoint                     | Purpose                                                                                                              |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/review/health`     | Reports mode, local review-model reachability and clinical-validation status                                         |
+| `POST /api/review/recognize` | Multipart audio and `source_language`; returns raw transcript and ASR timing                                         |
+| `POST /api/review/suggest`   | JSON `text`, `source_language`, optional `question_context`; returns an unverified proposal and guard results        |
+| `POST /api/review/translate` | JSON `original_text`, `confirmed_text`, language pair and `confirmed: true`; returns translation and local audio URL |
+
+Proposal statuses include `suggested`, `unchanged`, `repeat` and `blocked`. The API confirmation field enforces an explicit request flag; it cannot verify whether the user actually checked the statement with the speaker.
+
+The baseline retains `GET /health`, `POST /process_audio` and local audio serving. A healthy/reachable service does not prove accuracy or offline readiness.
+
+### Key files
+
+```text
+backend/main.py                      Baseline API and audio serving
+backend/review_app.py                Review-enabled application entry point
+backend/review_routes.py             Review API and confirmation request validation
+backend/models/asr.py                Speech recognition adapter
+backend/models/translation.py        Argos translation adapter
+backend/models/tts.py                Piper synthesis adapter
+backend/models/transcript_review.py  Local LLM client, prompts and proposal guards
+frontend/src/ReviewApp.jsx           Review, editing and confirmation UI
+frontend/review.html                 Review page entry point
+frontend/vite.review.config.js       Review development/build configuration
+frontend/tests/                     Added review-guard and speech-adapter tests
+scripts/download_models.py          Online speech/translation preparation
+tools/llama/                        Desktop llama runtime tools
+models_local/                       Local downloaded model assets (Git ignored)
+generated_audio/                    Generated WAV output (Git ignored)
 ```
 
-Open the URL printed by Vite, normally http://127.0.0.1:5173. Use the frontend URL, not backend port 8000, and allow microphone access. Select a supported language pair, open Free Conversation, choose who is speaking, hold the button for an utterance, and release to process. Use Play translation for the returned WAV. Do not record while output speech is playing.
+## Verification and limitations
 
-Example: English -> Russian, say "Where does it hurt?"; then reverse the direction with a consenting Russian speaker. Repeat English <-> Chinese. Use fictional examples, not patient records.
-
-Check health in another terminal:
+### Check services
 
 ```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/review/health | ConvertTo-Json -Depth 5
 Invoke-RestMethod http://127.0.0.1:8000/health | ConvertTo-Json -Depth 5
 ```
 
-Expected mode is local. `ready: true` checks required asset/package presence; it does not prove successful inference, clinical accuracy, or absence of network traffic. The frontend refreshes health periodically.
-
-Stop the backend with Ctrl+C and restart after changing code or environment variables; the command above does not enable auto-reload.
-
-## Mock demonstration
-
-Start the backend with:
-
-```powershell
-$env:FIELDTALK_MODE = 'mock'
-.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
-```
-
-Mock mode returns fixed allergy text and an audible tone, not recognized speech or translated spoken audio. The UI labels it Demo mode and does not allow mock speech into Handoff. It checks routing and display only. The default mode is mock; always set local explicitly for real-model testing.
-
-## Verify offline operation
-
-1. Finish all installation and model downloads while online.
-2. Stop both servers, disable Wi-Fi and disconnect Ethernet.
-3. Restart both servers without rerunning downloads and reload the local frontend.
-4. Complete the supported directions needed for the demo and record observed failures and timings.
-5. Use an OS network monitor if asserting that no external connections occur.
-
-No latency guarantee is made. First use may include model initialization. `timings_ms` measures backend stages, not microphone recording, browser upload/playback or human confirmation time.
-
-## Tests and benchmarks
-
-Servers are not needed to run automated tests:
+### Run tests and build
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pytest frontend/tests -q
 cd frontend
-npm test
-npm run build
+npx vite build --config vite.review.config.js
 cd ..
 ```
 
-The existing pipeline tests force mock mode; speech adapter tests use fake model objects. Passing them does not establish real model operation or medical accuracy.
+Tests include mocks and dependency stubs; passing tests does not establish real-model accuracy. Some review tests predate the newer prompt/pinyin/OpenCC changes and may need updating. Inspect failures rather than assuming the branch passes.
 
-Benchmark a real recording in local mode:
+### Offline demo checklist
 
-```powershell
-$env:FIELDTALK_MODE = 'local'
-.\.venv\Scripts\python.exe -m scripts.benchmark_speech --audio sample_en.wav --language en --runs 5 --out speech_en.csv
-.\.venv\Scripts\python.exe -m scripts.benchmark_speech --audio sample_ru.wav --language ru --runs 5 --out speech_ru.csv
-```
+1. Complete all dependency and model downloads while online, including the optional LLM weights.
+2. Stop the services, disconnect Wi-Fi/Ethernet, then restart the local LLM, backend and frontend.
+3. Reload the review page and test recognition, optional review, confirmed translation and speech playback.
+4. Test each intended language direction using fictional statements and consenting speakers.
+5. Record failures and observed timings; use an OS network monitor before asserting absence of external traffic.
 
-Use an existing recording and `en`, `zh` or `ru`. The benchmark measures ASR then TTS in the same language, excluding translation and browser playback. It reports first-call and subsequent timings; output speech files are removed by the benchmark. The CSV stores timings, not transcripts.
+The system is turn-based, not simultaneous interpretation. Backend timings exclude recording, human confirmation and browser playback. First-use model initialization may add delay. No recognition, translation or latency guarantee is made.
 
-## Troubleshooting
+### Known issues and troubleshooting
 
-| Symptom | Check or action |
-| --- | --- |
-| No module named faster_whisper | Install requirements-local.txt with `.venv\Scripts\python.exe -m pip` |
-| av.open rejects metadata_errors | Reinstall `av>=16,<19`, run pip check, restart backend |
-| Translation model en->ru missing | Rerun download_models online; check both Russian directions are installed |
-| TTS assets missing | Check voice `.onnx` and `.onnx.json` files; rerun setup |
-| synthesize_wav API missing | Install `piper-tts>=1.3,<2` in the backend environment |
-| Fixed allergy text and tone | Backend is in mock mode; restart with FIELDTALK_MODE=local |
-| Backend unavailable | Check backend terminal and port 8000; use Vite dev server for the UI |
-| Microphone denied | Allow browser microphone permission and use localhost |
-| No speech recognized | Repeat a short clear utterance; test the recording and local model |
-| Ready but processing fails | Read the complete backend traceback; health only checks assets |
+| Problem                         | Action                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Review routes return 404        | Launch `backend.review_app:app` and use the review Vite configuration                             |
+| Review rejects mock mode        | Restart with `FIELDTALK_MODE=local`                                                               |
+| Missing pypinyin/opencc import  | Install the review dependencies in the same virtual environment                                   |
+| Review model unavailable        | Check local server, loopback URL, port and `/health`                                              |
+| Invalid or truncated suggestion | Keep the original or repeat a shorter turn; inspect server/schema compatibility                   |
+| Russian recognition rejected    | Current ASR language validation excludes `ru`; fix and test before presenting Russian voice input |
+| Missing translation package     | Prepare the required Argos route online, then repeat offline testing                              |
+| Missing Piper voice             | Check both `.onnx` and `.onnx.json` assets                                                        |
+| `synthesize_wav` missing        | Verify the Piper version required by `requirements-local.txt`                                     |
+| Fixed allergy text and tone     | The baseline backend is running in mock mode                                                      |
 
-Model paths can be overridden with FIELDTALK_MODEL_DIR, FIELDTALK_ASR_DIR and FIELDTALK_VOICES_DIR. Restart after overrides. Confirm the running branch and imported files when debugging.
+### Safety and privacy
 
-## Safety, privacy and limitations
+Use fictional examples for the hackathon. Do not use private patient data or upload recordings/transcripts to the public repository.
 
-The backend is intended for one local demo user. Audio uploads are temporarily stored and removed after processing. Synthesized WAV files remain in generated_audio until manually deleted; this is not an all-ephemeral pipeline. The UI shows the returned text and requires the responder to add real patient speech to Handoff explicitly. Confirm critical statements separately. Do not upload private medical data to the public repository.
+Recognition uploads use temporary storage during processing. Generated speech WAV files remain on the backend disk until removed; this is not an entirely ephemeral system. Bind services to loopback for the single-laptop demo. The local LLM restriction does not by itself constitute a complete security or privacy audit.
 
-Evaluate negation, medication names, numbers, noise and unfamiliar speakers. Chinese voice output is Mandarin, not Cantonese validation. Accuracy and offline behavior must be demonstrated with actual models. Quick Question phrases are visible in the UI but have not been clinically reviewed; their audio requires an installed local browser voice. See [frontend/README.md](frontend/README.md).
+The model sees text, not audio, so it can propose plausible but incorrect corrections. Human confirmation and heuristic guards do not establish medical accuracy. No diagnosis, treatment recommendation or clinically validated medical-information extraction is provided.
 
-## Credits and licenses
+### Credits and source snapshot
 
-- [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
-- [Argos Translate](https://github.com/argosopentech/argos-translate)
-- [Piper](https://github.com/OHF-Voice/piper1-gpl) and its [Python API](https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/API_PYTHON.md)
-- [Piper voice catalog](https://huggingface.co/rhasspy/piper-voices)
-- FastAPI, React and Vite.
+Built with faster-whisper, Argos Translate, Piper, llama.cpp tooling, FastAPI, React, Vite, pypinyin and OpenCC. Review runtime and individual model/voice licenses separately before redistribution.
 
-Review engine and individual model/voice licenses separately before redistribution. AI coding assistance was used during development; the team remains responsible for validation and explaining the implementation.
+This documentation is based on source inspection, not a completed runtime acceptance test:
+
+- [temp branch](https://github.com/RRRRRRL/Hackau---Medical-offline-Translation-AI/tree/temp)
+- [Local review workflow introduction](https://github.com/RRRRRRL/Hackau---Medical-offline-Translation-AI/commit/8bad0b4c285bd62913d4038f4708f53dd43e368f)
+- [Mandarin review prompt and context support](https://github.com/RRRRRRL/Hackau---Medical-offline-Translation-AI/commit/ef3e6ecdbd22765cae03f5c28a3cff40e1f7c3b7)
+- [Chinese-normalized comparison and guard update](https://github.com/RRRRRRL/Hackau---Medical-offline-Translation-AI/commit/fb65e2f956e64171b6c8e111d34a2e2f865a2db4)
