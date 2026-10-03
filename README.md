@@ -6,11 +6,11 @@ FieldTalk translates communication; it does not diagnose, recommend treatment, o
 
 ## Current scope
 
-- Runs locally on one laptop: browser UI, Python backend, and model inference.
-- Supports English <-> Mandarin Chinese, English <-> Russian, and Chinese <-> Russian.
-- Language codes: `en`, `zh`, `ru`. Chinese <-> Russian is translated through an English pivot (ru -> en -> zh) because no direct Argos package exists.
-- Press Start recording, speak, then press Stop recording. Processing begins after recording stops; this is not simultaneous interpretation or streaming captions.
-- Phone deployment is future work, not part of this implementation.
+- Laptop pipeline is still available (`frontend` + `backend`) for local demo/testing.
+- Android React Native app now lives at `mobile/app` and is the canonical mobile source tree.
+- Mobile app supports English, Mandarin Chinese, and Russian (`en`, `zh`, `ru`) in all six translation directions.
+- Mobile workflow is turn-based Start/Stop recording. Recognition begins only after Stop (or automatic 30s cap stop).
+- Inference is device-local only: microphone WAV -> whisper.rn/whisper.cpp -> editable transcript -> ML Kit translation -> Android offline TTS.
 
 ## Architecture
 
@@ -52,7 +52,96 @@ scripts/benchmark_speech.py ASR/TTS timing benchmark
  tests/                    Mock pipeline and dependency-stub tests
 models_local/              Downloaded models, ignored by Git
  generated_audio/          Output WAV files, ignored by Git
+ mobile/app/               Canonical React Native Android app (generated project + native bridge)
 ```
+
+## Android (React Native, canonical at `mobile/app`)
+
+> Use a **fresh clone in a different local folder** so you do not overwrite your conflicted nested checkout.
+
+### Fresh clone (PowerShell)
+
+```powershell
+cd C:\dev
+git clone --branch feature/android-prototype https://github.com/RRRRRRL/Hackau---Medical-offline-Translation-AI.git Hackau-android-clean
+cd .\Hackau-android-clean\mobile\app
+```
+
+### Install JS deps and offline ASR asset
+
+Run from `mobile/app`:
+
+```powershell
+npm ci
+.\scripts\setup-android.ps1
+.\scripts\validate-android-model.ps1
+```
+
+What setup does:
+- Creates `android/app/src/main/assets` if missing.
+- Downloads **official multilingual** `ggml-tiny.bin` from `ggerganov/whisper.cpp`.
+- Rejects empty/HTML downloads.
+- Stores computed checksum + source in `ggml-tiny.metadata.json`.
+- Keeps model weights out of Git (`ggml-*.bin` is ignored).
+
+### Authorize adb + run debug build (Metro-dependent)
+
+From `mobile/app`:
+
+```powershell
+adb devices
+npm run android
+```
+
+Accept USB debugging prompt on phone. Debug mode needs Metro (`npm start`) and is not standalone offline proof.
+
+### One-time online preparation in app
+
+1. Tap **Prepare translation (online only)** (downloads required ML Kit language models).
+2. In Android TTS settings install offline voices:
+   - English (`en-US`)
+   - Mandarin Chinese (`zh-CN`)
+   - Russian (`ru-RU`)
+3. Tap **Load offline models**.
+4. Pick source/target pair, Start, Stop, edit transcript, Translate, Speak.
+
+Pair-specific readiness is enforced. Missing Russian voice does not block English/Chinese turns.
+
+### Standalone APK / bundle (no Metro)
+
+From `mobile/app`:
+
+```powershell
+npm run android:release-apk
+npm run android:release-bundle
+```
+
+- Release uses explicit **debug signing config** only (development/non-production).
+- Do **not** add private production keystores to this repository.
+- Install release APK with `adb install -r .\android\app\build\outputs\apk\release\app-release.apk`.
+- Verify cold launch in airplane mode (Metro off, USB disconnected).
+
+### Android acceptance checklist (offline)
+
+- [ ] Airplane mode cold launch works without Metro/laptop.
+- [ ] All six directions tested (`en↔zh`, `en↔ru`, `zh↔ru`).
+- [ ] Translation button works only after explicit online preparation.
+- [ ] Recording cancellation/backgrounding is reflected in UI.
+- [ ] Empty/cancelled turns do not run inference.
+- [ ] Transcript edit or language switch invalidates stale translation.
+- [ ] Offline TTS errors are explicit for missing/network-only voices.
+- [ ] Sensitive data is not logged; temporary WAV files are cleaned after successful/failed/cancelled turns (process crashes can still leave cache leftovers).
+
+### Mobile troubleshooting
+
+| Symptom | Action |
+| --- | --- |
+| `verifyWhisperAsset` Gradle error | Run `.\scripts\setup-android.ps1` from `mobile/app` and retry |
+| `ggml-tiny.bin` checksum mismatch | Re-run setup script; it rewrites model + metadata atomically |
+| `Missing translation model(s)` in app | Tap **Prepare translation (online only)** while connected to Wi-Fi |
+| `Install an offline ... voice` | Install the exact offline voice in Android TTS settings |
+| Playback stopped/error | Use Stop playback, then retry after confirming TTS engine initialization |
+| Microphone denied/read failure | Grant RECORD_AUDIO permission and retry short turns |
 
 ## Prepare the laptop
 
@@ -201,6 +290,10 @@ Evaluate negation, medication names, numbers, noise and unfamiliar speakers. Chi
 - [Argos Translate](https://github.com/argosopentech/argos-translate)
 - [Piper](https://github.com/OHF-Voice/piper1-gpl) and its [Python API](https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/API_PYTHON.md)
 - [Piper voice catalog](https://huggingface.co/rhasspy/piper-voices)
+- [React Native](https://reactnative.dev/)
+- [whisper.rn](https://github.com/mybigday/whisper.rn) and [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
+- [Google ML Kit Translation](https://developers.google.com/ml-kit/language/translation/android)
+- [Android TextToSpeech](https://developer.android.com/reference/android/speech/tts/TextToSpeech)
 - FastAPI, React and Vite.
 
 Review engine and individual model/voice licenses separately before redistribution. AI coding assistance was used during development; the team remains responsible for validation and explaining the implementation.

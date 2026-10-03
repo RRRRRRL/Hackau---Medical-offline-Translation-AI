@@ -4,6 +4,16 @@ __pycache__/
 .pytest_cache/
 node_modules/
 frontend/dist/
+mobile/app/android/.gradle/
+mobile/app/android/build/
+mobile/app/android/app/build/
+mobile/app/android/local.properties
+mobile/app/node_modules/
+mobile/app/android/app/src/main/assets/ggml-*.bin
+mobile/app/android/app/src/main/assets/recordings/
+mobile/app/android/app/*.jks
+mobile/app/android/app/*.keystore
+mobile/app/android/app/*.pem
 models_local/
 generated_audio/
 *.pyc
