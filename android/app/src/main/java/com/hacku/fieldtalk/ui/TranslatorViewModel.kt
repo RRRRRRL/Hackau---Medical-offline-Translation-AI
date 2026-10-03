@@ -64,6 +64,7 @@ class TranslatorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun startRecording() {
+        if (_state.value.stage != WorkStage.READY && _state.value.stage != WorkStage.ERROR) return
         _state.update { it.copy(stage = WorkStage.PREPARING_ASR, modelDownloadProgress = null, error = null) }
         recognizer.prepare(
             language = _state.value.source,
@@ -71,6 +72,14 @@ class TranslatorViewModel(application: Application) : AndroidViewModel(applicati
             onProgress = { progress -> _state.update { it.copy(modelDownloadProgress = progress) } },
             onError = ::showError,
         )
+    }
+
+    fun toggleRecording() {
+        when (_state.value.stage) {
+            WorkStage.RECORDING -> stopAndRecognize()
+            WorkStage.READY, WorkStage.ERROR -> startRecording()
+            else -> Unit
+        }
     }
 
     private fun beginRecognition() {
@@ -90,6 +99,7 @@ class TranslatorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun stopAndRecognize() {
+        if (_state.value.stage != WorkStage.RECORDING) return
         _state.update { it.copy(stage = WorkStage.RECOGNIZING) }
         runCatching { recognizer.stop() }.onFailure(::showError)
     }

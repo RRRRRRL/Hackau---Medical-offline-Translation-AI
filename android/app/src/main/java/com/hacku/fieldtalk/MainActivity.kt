@@ -26,21 +26,22 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val permissionLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestPermission(),
-                ) { granted -> if (granted) viewModel.startRecording() }
+                ) { granted -> if (granted) viewModel.toggleRecording() }
 
                 TranslatorScreen(
                     state = state,
                     onSourceSelected = viewModel::selectSource,
                     onTargetSelected = viewModel::selectTarget,
                     onSwap = viewModel::swapLanguages,
-                    onRecord = {
-                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                            viewModel.startRecording()
+                    onRecordingToggle = {
+                        if (state.stage == com.hacku.fieldtalk.ui.WorkStage.RECORDING) {
+                            viewModel.toggleRecording()
+                        } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                            viewModel.toggleRecording()
                         } else {
                             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     },
-                    onStop = viewModel::stopAndRecognize,
                     onTranscriptChanged = viewModel::updateTranscript,
                     onTranslate = viewModel::translate,
                     onReplay = viewModel::replay,

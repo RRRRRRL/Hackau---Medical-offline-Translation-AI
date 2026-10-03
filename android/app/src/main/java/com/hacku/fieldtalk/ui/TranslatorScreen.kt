@@ -44,8 +44,7 @@ fun TranslatorScreen(
     onSourceSelected: (Language) -> Unit,
     onTargetSelected: (Language) -> Unit,
     onSwap: () -> Unit,
-    onRecord: () -> Unit,
-    onStop: () -> Unit,
+    onRecordingToggle: () -> Unit,
     onTranscriptChanged: (String) -> Unit,
     onTranslate: () -> Unit,
     onReplay: () -> Unit,
@@ -62,7 +61,7 @@ fun TranslatorScreen(
                 SafetyCard()
                 ModelCard(state)
                 LanguageRow(state, onSourceSelected, onTargetSelected, onSwap)
-                RecordingCard(state, onRecord, onStop)
+                RecordingCard(state, onRecordingToggle)
                 OutlinedTextField(
                     value = state.transcript,
                     onValueChange = onTranscriptChanged,
@@ -149,7 +148,7 @@ private fun LanguageMenu(label: String, selected: Language, choices: List<Langua
 }
 
 @Composable
-private fun RecordingCard(state: TranslatorUiState, onRecord: () -> Unit, onStop: () -> Unit) {
+private fun RecordingCard(state: TranslatorUiState, onRecordingToggle: () -> Unit) {
     Card {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
@@ -159,13 +158,15 @@ private fun RecordingCard(state: TranslatorUiState, onRecord: () -> Unit, onStop
                     WorkStage.RECORDING -> "Recording… speak clearly, then stop."
                     WorkStage.RECOGNIZING -> "Recognizing speech locally…"
                     WorkStage.CHECKING_MODELS -> "Checking local models…"
-                    else -> "Push to talk or type a message below."
+                    else -> "Tap once to start recording and tap again to stop, or type a message below."
                 },
             )
-            if (state.stage == WorkStage.RECORDING) {
-                Button(onClick = onStop, modifier = Modifier.fillMaxWidth()) { Text("Stop recording") }
-            } else {
-                Button(onClick = onRecord, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Start recording") }
+            Button(
+                onClick = onRecordingToggle,
+                enabled = state.stage == WorkStage.RECORDING || !state.busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (state.stage == WorkStage.RECORDING) "Stop recording" else "Start recording")
             }
         }
     }
