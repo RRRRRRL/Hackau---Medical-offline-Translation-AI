@@ -17,7 +17,14 @@ def main():
     package.update_package_index()
     available = package.get_available_packages()
     installed = {(p.from_code, p.to_code) for p in package.get_installed_packages()}
-    for source, target in (("en", "zh"), ("zh", "en")):
+    for source, target in (
+    ("en", "zh"),
+    ("zh", "en"),
+    ("en", "ru"),
+    ("ru", "en"),
+    ("ru", "zh"),
+    ("zh", "ru"),
+    ):
         if (source, target) in installed:
             continue
         match = next((p for p in available if p.from_code == source and p.to_code == target), None)

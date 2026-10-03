@@ -11,7 +11,7 @@ from backend.models.asr import ModelUnavailable
 
 _lock = RLock()
 
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=3)
 def _voice(language: str):
     name = VOICES.get(language)
     if name is None:
