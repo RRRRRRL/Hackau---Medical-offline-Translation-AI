@@ -37,20 +37,12 @@ def speech_to_text(audio_path: str | Path, language: str | None = None) -> ASRRe
     path = Path(audio_path)
     if not path.is_file() or path.stat().st_size == 0:
         raise ValueError("No audio recorded. Please record again.")
-    if language not in (None, "en", "zh", "ru"):
-        raise ValueError("Only English, Chinese, and Russian are configured.")
+    if language not in (None, "en", "zh"):
+        raise ValueError("Only English and Chinese are configured.")
     if MODE == "mock":
         lang = language or "en"
-        mock_text = {
-            "en": "I am allergic to penicillin.",
-            "zh": "我对青霉素过敏。",
-            "ru": "У меня аллергия на пенициллин.",
-        }
-        return ASRResult(
-            text=mock_text[lang],
-            language=lang,
-            confidence=None,
-        )
+        return ASRResult(text="I am allergic to penicillin." if lang == "en" else "我对青霉素过敏。",
+                         language=lang, confidence=None)
     if MODE != "local":
         raise ValueError("FIELDTALK_MODE must be mock or local.")
     try:
