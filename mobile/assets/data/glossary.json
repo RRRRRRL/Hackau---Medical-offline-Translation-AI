@@ -1,0 +1,74 @@
+[
+  {
+    "category": "allergy",
+    "en": ["allergy", "allergic", "allergies"],
+    "ru": ["аллергия", "аллерги", "аллергическая"],
+    "zh": ["过敏"]
+  },
+  {
+    "category": "pain",
+    "en": ["pain", "painful", "hurts", "hurt", "ache", "aching"],
+    "ru": ["боль", "болит", "болевой", "болевые"],
+    "zh": ["痛", "疼", "疼痛"]
+  },
+  {
+    "category": "bleeding",
+    "en": ["bleeding", "bleed", "blood", "hemorrhage"],
+    "ru": ["кровотечение", "кровь", "кровотеч"],
+    "zh": ["出血", "流血", "血"]
+  },
+  {
+    "category": "breathing",
+    "en": ["breath", "breathing", "breathe", "shortness", "asthma"],
+    "ru": ["дыхание", "дышать", "астма", "одышка"],
+    "zh": ["呼吸", "哮喘", "气短"]
+  },
+  {
+    "category": "medication",
+    "en": ["medication", "medicines", "medicine", "drug", "drugs", "prescription", "pill", "tablet", "penicillin"],
+    "ru": ["лекарство", "лекарства", "таблетки", "препарат", "пенициллин"],
+    "zh": ["药", "药物", "青霉素", "处方药"]
+  },
+  {
+    "category": "diabetes",
+    "en": ["diabetes", "diabetic", "sugar", "insulin"],
+    "ru": ["диабет", "сахар", "инсулин"],
+    "zh": ["糖尿病", "血糖", "胰岛素"]
+  },
+  {
+    "category": "consciousness",
+    "en": ["conscious", "consciousness", "dizzy", "faint", "drowsy", "awake"],
+    "ru": ["сознание", "головокружение", "обморок", "сонливый", "в сознании"],
+    "zh": ["意识", "头晕", "昏厥", "清醒"]
+  },
+  {
+    "category": "head",
+    "en": ["head", "headache", "head injury"],
+    "ru": ["голова", "головная боль"],
+    "zh": ["头", "头痛", "头部"]
+  },
+  {
+    "category": "chest",
+    "en": ["chest", "heart", "cardiac"],
+    "ru": ["грудь", "сердце", "сердечный"],
+    "zh": ["胸", "心脏", "胸口"]
+  },
+  {
+    "category": "nausea",
+    "en": ["nausea", "nauseous", "vomit", "vomiting", "sick"],
+    "ru": ["тошнота", "рвота", "тошнит"],
+    "zh": ["恶心", "呕吐"]
+  },
+  {
+    "category": "body",
+    "en": ["arm", "leg", "hand", "foot", "stomach", "back", "neck", "shoulder", "throat", "eye", "ear"],
+    "ru": ["рука", "нога", "живот", "спина", "шея", "плечо", "горло", "глаз", "ухо"],
+    "zh": ["胳膊", "腿", "手", "脚", "肚子", "背", "脖子", "肩膀", "喉咙", "眼睛", "耳朵"]
+  },
+  {
+    "category": "number",
+    "en": ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"],
+    "ru": ["один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять", "десять"],
+    "zh": ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
+  }
+]

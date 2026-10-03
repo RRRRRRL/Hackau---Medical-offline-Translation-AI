@@ -6,11 +6,13 @@ FieldTalk translates communication; it does not diagnose, recommend treatment, o
 
 ## Current scope
 
-- Runs locally on one laptop: browser UI, Python backend, and model inference.
+- Two builds share the same design and linguistic layer:
+  - **Laptop web app** (`frontend/` + `backend/`): FastAPI + Python models.
+  - **Mobile Android app** (`mobile/`): Flutter, fully on-device and offline.
 - Supports English <-> Mandarin Chinese, English <-> Russian, and Chinese <-> Russian.
 - Language codes: `en`, `zh`, `ru`. Chinese <-> Russian is translated through an English pivot (ru -> en -> zh) because no direct Argos package exists.
 - Press Start recording, speak, then press Stop recording. Processing begins after recording stops; this is not simultaneous interpretation or streaming captions.
-- Phone deployment is future work, not part of this implementation.
+- Phone deployment is a working build: the Flutter Android app in `mobile/` runs fully on-device. See `mobile/README.md` for build steps and model preparation.
 
 ## Architecture
 

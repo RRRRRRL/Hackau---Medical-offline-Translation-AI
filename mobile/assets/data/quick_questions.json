@@ -1,0 +1,98 @@
+[
+  {
+    "id": "breathing",
+    "en": "Can you breathe normally?",
+    "ru": "Вы можете нормально дышать?",
+    "zh": "你能正常呼吸吗？"
+  },
+  {
+    "id": "allergy",
+    "en": "Are you allergic to any medication?",
+    "ru": "У вас есть аллергия на какие-либо лекарства?",
+    "zh": "你对任何药物过敏吗？"
+  },
+  {
+    "id": "pain",
+    "en": "Where does it hurt?",
+    "ru": "Где у вас болит?",
+    "zh": "你哪里疼？"
+  },
+  {
+    "id": "pain_level",
+    "en": "On a scale of 1 to 10, how strong is the pain?",
+    "ru": "По шкале от 1 до 10, насколько сильная боль?",
+    "zh": "从1到10分，疼痛有多严重？"
+  },
+  {
+    "id": "bleeding",
+    "en": "Are you bleeding? Where?",
+    "ru": "У вас есть кровотечение? Где?",
+    "zh": "你在流血吗？在哪里？"
+  },
+  {
+    "id": "medication",
+    "en": "Are you taking any medication?",
+    "ru": "Вы принимаете какие-либо лекарства?",
+    "zh": "你在服用什么药物吗？"
+  },
+  {
+    "id": "diabetes",
+    "en": "Do you have diabetes?",
+    "ru": "У вас диабет?",
+    "zh": "你有糖尿病吗？"
+  },
+  {
+    "id": "asthma",
+    "en": "Do you have asthma?",
+    "ru": "У вас астма?",
+    "zh": "你有哮喘吗？"
+  },
+  {
+    "id": "consciousness",
+    "en": "Are you feeling dizzy or faint?",
+    "ru": "Вы чувствуете головокружение или слабость?",
+    "zh": "你感到头晕或晕厥吗？"
+  },
+  {
+    "id": "head_injury",
+    "en": "Did you hit your head?",
+    "ru": "Вы ударились головой?",
+    "zh": "你撞到头了吗？"
+  },
+  {
+    "id": "pregnant",
+    "en": "Are you pregnant?",
+    "ru": "Вы беременны?",
+    "zh": "你怀孕了吗？"
+  },
+  {
+    "id": "chest_pain",
+    "en": "Do you have pain in your chest?",
+    "ru": "У вас боль в груди?",
+    "zh": "你胸痛吗？"
+  },
+  {
+    "id": "nausea",
+    "en": "Do you feel sick or nauseous?",
+    "ru": "Вас тошнит или вы чувствуете недомогание?",
+    "zh": "你感到恶心或想吐吗？"
+  },
+  {
+    "id": "swallow",
+    "en": "Can you swallow?",
+    "ru": "Вы можете глотать?",
+    "zh": "你能吞咽吗？"
+  },
+  {
+    "id": "name",
+    "en": "What is your name?",
+    "ru": "Как вас зовут?",
+    "zh": "你叫什么名字？"
+  },
+  {
+    "id": "contact",
+    "en": "Can you tell me your phone number?",
+    "ru": "Вы можете назвать свой номер телефона?",
+    "zh": "你能告诉我你的电话号码吗？"
+  }
+]
