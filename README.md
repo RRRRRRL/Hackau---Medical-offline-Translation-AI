@@ -7,10 +7,14 @@ FieldTalk translates communication; it does not diagnose, recommend treatment, o
 ## Current scope
 
 - Runs locally on one laptop: browser UI, Python backend, and model inference.
+- Includes a separate native Android application under `android/` for Android 8.0
+  (API 26) and newer. It uses Android-managed on-device speech recognition,
+  ML Kit translation, and offline Android TTS voices.
 - Supports English <-> Mandarin Chinese, English <-> Russian, and Chinese <-> Russian.
 - Language codes: `en`, `zh`, `ru`. Chinese <-> Russian is translated through an English pivot (ru -> en -> zh) because no direct Argos package exists.
 - The frontend offers Quick Questions, Yes / No, Free Conversation, and an explicit patient-stated Handoff. Hold to Speak records one turn; processing begins on release. This is not simultaneous interpretation or streaming captions.
-- Phone deployment is future work, not part of this implementation.
+- The desktop and Android applications use different inference runtimes and model
+  formats. Desktop model files cannot be copied directly into the Android app.
 
 ## Architecture
 
@@ -47,12 +51,73 @@ backend/config.py          Paths, mode, voices, supported pairs
 backend/main.py            API, health checks, audio serving
 backend/models/            ASR, translation, TTS and NLP adapters
 frontend/                  React/Vite emergency workflows and frontend tests
+android/                   Native Kotlin/Jetpack Compose Android application
 scripts/download_models.py Online preparation of model assets
 scripts/benchmark_speech.py ASR/TTS timing benchmark
 tests/                     Mock pipeline and dependency-stub tests
 models_local/              Downloaded models, ignored by Git
 generated_audio/           Output WAV files, ignored by Git
 ```
+
+## Android application
+
+The Android project is self-contained in `android/`. Run its commands from that
+directory regardless of where this repository is stored. Do not reuse an absolute
+project path from another computer or an earlier location.
+
+### Required tools
+
+Install the following while connected to the internet:
+
+1. **JDK 17** (do not build this project with JDK 25).
+2. **Android Studio**, including Android SDK Command-line Tools.
+3. In Android Studio's **SDK Manager**:
+  - Android SDK Platform 35
+  - Android SDK Build-Tools 35.0.0
+  - Android SDK Platform-Tools
+4. For emulator testing, an API 35 **Google Play** system image and an Android
+  Virtual Device.
+
+Gradle does not require a separate installation. The checked-in Gradle wrapper
+downloads Gradle, Android/Kotlin libraries, and other build dependencies on the first
+build.
+
+### Configure, build, and test
+
+Open PowerShell in the repository root and run:
+
+```powershell
+cd .\android
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+"sdk.dir=$($env:ANDROID_HOME -replace '\\','/')" | Set-Content .\local.properties
+.\gradlew.bat test assembleDebug
+```
+
+Substitute the actual JDK 17 and SDK paths if they were installed elsewhere.
+`local.properties` is machine-specific; regenerate it after moving the repository to
+a computer whose Android SDK is in a different location.
+
+The generated APK is:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Run for debugging
+
+Start an emulator in Android Studio Device Manager, or connect an unlocked phone with
+**Developer options → USB debugging** enabled. From `android/`, run:
+
+```powershell
+& "$env:ANDROID_HOME\platform-tools\adb.exe" devices
+.\gradlew.bat installDebug
+& "$env:ANDROID_HOME\platform-tools\adb.exe" shell am start -n com.hacku.fieldtalk/.MainActivity
+```
+
+Approve the USB-debugging prompt on a physical phone. The device must appear as
+`device`, not `unauthorized` or `offline`. See [`android/README.md`](android/README.md)
+for model preparation, app usage, offline testing, and troubleshooting.
 
 ## Prepare the laptop
 
