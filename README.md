@@ -4,12 +4,12 @@ FieldTalk is a 48-hour hackathon prototype for offline speech translation betwee
 
 ## Current scope
 
-English ↔ Chinese speech translation. The first milestone is microphone → speech recognition → translation → speech synthesis → playback. Quick questions, Russian, medical NLP, and other modes are future work.
+English ↔ Chinese speech translation. The frontend now includes Quick Questions, Yes / No, Free Conversation, and an explicit Handoff workflow. Russian and medical NLP still require teammate integration. See [frontend/README.md](frontend/README.md) for frontend behavior and limitations.
 
 ## Architecture and stable interfaces
 
 ```text
-React/Vite microphone + result page
+React/Vite emergency communication workflows
                 ↓ multipart POST /process_audio
 FastAPI orchestrator (backend/main.py)
                 ↓
@@ -34,8 +34,8 @@ Language codes are `en` and `zh`. Confidence is `null` when the ASR model has no
 ```text
 backend/                 FastAPI, contracts, configuration, model adapters
 backend/models/          asr.py, translation.py, tts.py, emergency_nlp.py
-frontend/                One-page React/Vite microphone UI
-data/                    Placeholder quick-question content, not in the UI
+frontend/                React/Vite emergency workflow UI and frontend tests
+data/                    Original quick-question seed content
 scripts/download_models.py  Online setup for local model assets
 tests/                   Mock interface and backend pipeline tests
 models_local/             Downloaded ASR and Piper assets (Git ignored)
@@ -50,7 +50,7 @@ Run these commands from the repository root. Python 3.10+ and Node.js 20+ are ne
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 cd frontend
-npm install
+npm ci
 cd ..
 $env:FIELDTALK_MODE = 'mock'
 .\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
@@ -63,7 +63,7 @@ cd frontend
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. Choose English → Chinese, record a short phrase, and stop. The mock returns fixed allergy text and an audible **tone**, not spoken Chinese. The page clearly says `MOCK DEMO`. This stage verifies routing, file upload, response display, audio serving, and playback controls; it does not verify speech translation.
+Open `http://127.0.0.1:5173`. The system status says **Demo mode**. For the mock speech path, choose Free Conversation, select **Responder · English**, hold the recording button, speak, and release. The mock returns fixed allergy text and an audible **tone**, not spoken Chinese. Mock speech cannot be added to Handoff. This stage verifies routing, file upload, response display, audio serving, and playback controls; it does not verify speech translation.
 
 ## Install real local models (internet needed once)
 
