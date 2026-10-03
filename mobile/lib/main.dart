@@ -21,6 +21,15 @@ import 'services/nlp_service.dart';
 import 'services/translation_service.dart';
 import 'services/tts_service.dart';
 
+class FieldColors {
+  static const ink = Color(0xFF10110F);
+  static const bone = Color(0xFFF4F1E8);
+  static const lime = Color(0xFFD8FF3E);
+  static const muted = Color(0xFFADAEA8);
+  static const surface = Color(0xFF20221E);
+  static const danger = Color(0xFFFF7770);
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const FieldTalkApp());
@@ -33,9 +42,24 @@ class FieldTalkApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'FieldTalk',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1B6B4F)),
+        scaffoldBackgroundColor: FieldColors.ink,
+        colorScheme: const ColorScheme.dark(
+          primary: FieldColors.lime,
+          onPrimary: FieldColors.ink,
+          surface: FieldColors.surface,
+          onSurface: FieldColors.bone,
+          error: FieldColors.danger,
+        ),
+        textTheme: const TextTheme(
+          headlineLarge: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, height: 1.0, letterSpacing: -1.5),
+          titleLarge: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, height: 1.15),
+          bodyLarge: TextStyle(fontSize: 18, height: 1.35),
+          bodyMedium: TextStyle(fontSize: 15, height: 1.4),
+          labelLarge: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 1.2),
+        ).apply(bodyColor: FieldColors.bone, displayColor: FieldColors.bone),
       ),
       home: const HomeScreen(),
     );
@@ -184,134 +208,233 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = _recording ? 'RECORDING' : _busy ? 'PROCESSING LOCALLY'
+        : _error != null ? 'ACTION NEEDED' : !_modelsReady ? 'LOADING LOCAL DATA'
+        : _original != null ? 'TRANSLATION READY' : 'READY TO RECORD';
     return Scaffold(
-      appBar: AppBar(title: const Text('FieldTalk')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Offline medical translation for first responders',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            _LanguageSelector(
-              source: _source,
-              target: _target,
-              onChanged: _setPair,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _busy ? null : _toggleRecording,
-                    icon: Icon(_recording ? Icons.stop : Icons.mic),
-                    label: Text(_recording ? 'Stop' : 'Record'),
-                  ),
-                ),
-              ],
-            ),
-            if (_recording)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('Recording… speak clearly, then press Stop.'),
-              ),
-            if (_busy)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('Processing on device…'),
-              ),
-            if (!_modelsReady)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('Loading linguistic data…'),
-              ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
-              ),
-            if (_original != null)
-              _ResultCard(
-                original: _original!,
-                translated: _translated!,
-                info: _info,
-                totalMs: _totalMs,
-                audioPath: _audioPath,
-                note: _translationNote,
-                onPlay: _audioPath == null
-                    ? null
-                    : () => _player.play(DeviceFileSource(_audioPath!)),
-              ),
-            const SizedBox(height: 16),
-            Text('Quick questions', style: Theme.of(context).textTheme.titleMedium),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('FieldTalk', style: Theme.of(context).textTheme.headlineLarge),
+                const SizedBox(height: 5),
+                const Text('OFFLINE EMERGENCY COMMUNICATION',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2, color: FieldColors.muted)),
+              ])),
+              const Icon(Icons.graphic_eq, color: FieldColors.lime, size: 30),
+            ]),
+            const SizedBox(height: 27),
+            const _SectionLabel('01  LANGUAGE PAIR'),
+            const SizedBox(height: 10),
+            _LanguageSelector(source: _source, target: _target,
+                enabled: !_recording && !_busy, onChanged: _setPair),
+            const SizedBox(height: 20),
+            _RecordPanel(state: state, recording: _recording, busy: _busy,
+                loading: !_modelsReady,
+                onPressed: _busy || !_modelsReady ? null : _toggleRecording),
+            if (_error != null) ...[
+              const SizedBox(height: 14),
+              _Notice(message: _error!.startsWith('Microphone')
+                  ? 'Allow microphone access, then try again.'
+                  : _error!.startsWith('No audio')
+                      ? 'No audio was captured. Try recording again.'
+                      : _error!.startsWith('Failed to load')
+                          ? 'Local language data could not load. Restart the app.'
+                          : 'Please try again. If this continues, restart the app.'),
+            ],
+            if (_original != null && _translated != null) ...[
+              const SizedBox(height: 26),
+              const _SectionLabel('02  CONVERSATION'),
+              const SizedBox(height: 10),
+              _ResultCard(original: _original!, translated: _translated!,
+                  info: _info, totalMs: _totalMs, note: _translationNote,
+                  onPlay: _audioPath == null || _busy ? null
+                      : () => _player.play(DeviceFileSource(_audioPath!))),
+            ],
+            const SizedBox(height: 28),
+            const _SectionLabel('03  QUICK QUESTIONS'),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _questions.map((q) {
-                return ActionChip(
-                  label: Text(q[_source]!),
-                  onPressed: () {
-                    _setPair(_source, _source == 'en' ? 'ru' : 'en');
-                  },
-                );
-              }).toList(),
-            ),
-          ],
+            const Text('Keep the conversation moving.',
+                style: TextStyle(color: FieldColors.muted, fontSize: 14)),
+            const SizedBox(height: 12),
+            ..._questions.asMap().entries.map((entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: OutlinedButton(
+                onPressed: _busy || _recording ? null
+                    : () => _setPair(_source, _source == 'en' ? 'ru' : 'en'),
+                style: OutlinedButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  minimumSize: const Size.fromHeight(58),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  foregroundColor: FieldColors.bone,
+                  side: const BorderSide(color: Color(0xFF4A4D44)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
+                child: Row(children: [
+                  Text((entry.key + 1).toString().padLeft(2, '0'),
+                      style: const TextStyle(color: FieldColors.lime,
+                          fontWeight: FontWeight.w800, fontSize: 12)),
+                  const SizedBox(width: 14),
+                  Expanded(child: Text(entry.value[_source] ?? '',
+                      style: const TextStyle(fontSize: 16, height: 1.3))),
+                  const Icon(Icons.north_east, size: 18),
+                ]),
+              ),
+            )),
+            const SizedBox(height: 12),
+            const Text('LOCAL PROCESSING  /  NO CONNECTION REQUIRED',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: FieldColors.muted, fontSize: 10,
+                    fontWeight: FontWeight.w700, letterSpacing: 1)),
+          ]),
         ),
       ),
     );
   }
 }
 
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+  @override
+  Widget build(BuildContext context) => Text(text,
+      style: const TextStyle(color: FieldColors.lime, fontSize: 11,
+          fontWeight: FontWeight.w900, letterSpacing: 1.5));
+}
+
 class _LanguageSelector extends StatelessWidget {
   final String source;
   final String target;
+  final bool enabled;
   final void Function(String, String) onChanged;
-  const _LanguageSelector({
-    required this.source,
-    required this.target,
-    required this.onChanged,
-  });
-
+  const _LanguageSelector({required this.source, required this.target,
+      required this.enabled, required this.onChanged});
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            initialValue: source,
-            decoration: const InputDecoration(labelText: 'Source'),
-            items: LanguageConfig.languages
-                .map((c) => DropdownMenuItem(value: c, child: Text(LanguageConfig.labels[c]!)))
-                .toList(),
-            onChanged: (v) {
-              if (v != null) onChanged(v, target);
-            },
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Icon(Icons.arrow_forward),
-        ),
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            initialValue: target,
-            decoration: const InputDecoration(labelText: 'Target'),
-            items: LanguageConfig.languages
-                .map((c) => DropdownMenuItem(value: c, child: Text(LanguageConfig.labels[c]!)))
-                .toList(),
-            onChanged: (v) {
-              if (v != null) onChanged(source, v);
-            },
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Row(children: [
+    Expanded(child: _LanguageTile(label: 'Source', code: source,
+        enabled: enabled, onSelected: (v) => onChanged(v, target))),
+    Padding(padding: const EdgeInsets.symmetric(horizontal: 7),
+      child: IconButton.filled(
+        tooltip: 'Swap languages',
+        onPressed: enabled ? () => onChanged(target, source) : null,
+        icon: const Icon(Icons.swap_horiz, size: 24),
+        style: IconButton.styleFrom(backgroundColor: FieldColors.lime,
+            foregroundColor: FieldColors.ink, minimumSize: const Size(48, 48)))),
+    Expanded(child: _LanguageTile(label: 'Target', code: target,
+        enabled: enabled, onSelected: (v) => onChanged(source, v))),
+  ]);
+}
+
+class _LanguageTile extends StatelessWidget {
+  final String label;
+  final String code;
+  final bool enabled;
+  final ValueChanged<String> onSelected;
+  const _LanguageTile({required this.label, required this.code,
+      required this.enabled, required this.onSelected});
+  @override
+  Widget build(BuildContext context) => PopupMenuButton<String>(
+    enabled: enabled, tooltip: 'Choose $label language',
+    onSelected: onSelected,
+    itemBuilder: (_) => LanguageConfig.languages.map((language) =>
+        PopupMenuItem<String>(value: language,
+            child: Text(LanguageConfig.labels[language]!))).toList(),
+    child: Container(
+      constraints: const BoxConstraints(minHeight: 82),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(color: FieldColors.surface,
+          border: Border.all(color: const Color(0xFF595C52), width: 1.5),
+          borderRadius: BorderRadius.circular(4)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label.toUpperCase(), style: const TextStyle(
+            color: FieldColors.muted, fontSize: 10,
+            fontWeight: FontWeight.w800, letterSpacing: 1.1)),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: Text(LanguageConfig.labels[code]!,
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
+          const Icon(Icons.expand_more, size: 18, color: FieldColors.lime),
+        ]),
+      ]),
+    ),
+  );
+}
+
+class _RecordPanel extends StatelessWidget {
+  final String state;
+  final bool recording;
+  final bool busy;
+  final bool loading;
+  final VoidCallback? onPressed;
+  const _RecordPanel({required this.state, required this.recording,
+      required this.busy, required this.loading, required this.onPressed});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(color: FieldColors.surface,
+        border: Border.all(color: recording ? FieldColors.lime : const Color(0xFF4A4D44), width: 1.5),
+        borderRadius: BorderRadius.circular(4)),
+    child: Column(children: [
+      Row(children: [
+        Container(width: 9, height: 9, decoration: BoxDecoration(
+            color: recording ? FieldColors.danger : FieldColors.lime, shape: BoxShape.circle)),
+        const SizedBox(width: 9),
+        Expanded(child: Text(state, style: const TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.3))),
+        const Text('ON DEVICE', style: TextStyle(
+            color: FieldColors.muted, fontSize: 10, fontWeight: FontWeight.w700)),
+      ]),
+      const SizedBox(height: 20),
+      if (busy || loading)
+        const Padding(padding: EdgeInsets.symmetric(vertical: 30),
+            child: CircularProgressIndicator(color: FieldColors.lime))
+      else
+        SizedBox(width: 132, height: 132, child: FilledButton(
+          onPressed: onPressed,
+          style: FilledButton.styleFrom(
+              backgroundColor: recording ? FieldColors.bone : FieldColors.lime,
+              foregroundColor: FieldColors.ink, shape: const CircleBorder()),
+          child: Icon(recording ? Icons.stop_rounded : Icons.mic_rounded, size: 54),
+        )),
+      const SizedBox(height: 16),
+      Text(busy ? 'PROCESSING LOCALLY' : loading ? 'LOADING LOCAL DATA'
+          : recording ? 'TAP TO STOP' : 'TAP TO RECORD',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+      const SizedBox(height: 6),
+      Text(recording ? 'Speak clearly, then stop recording.'
+          : busy ? 'Recognizing and translating on this device.'
+          : loading ? 'Preparing language resources.' : 'One speaker at a time.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: FieldColors.muted, fontSize: 14)),
+    ]),
+  );
+}
+
+class _Notice extends StatelessWidget {
+  final String message;
+  const _Notice({required this.message});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(color: FieldColors.surface,
+        border: Border.all(color: FieldColors.danger, width: 1.5),
+        borderRadius: BorderRadius.circular(4)),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Icon(Icons.error_outline, color: FieldColors.danger, size: 24),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('COULD NOT COMPLETE', style: TextStyle(
+            color: FieldColors.danger, fontSize: 12,
+            fontWeight: FontWeight.w900, letterSpacing: 1)),
+        const SizedBox(height: 5),
+        Text(message, style: const TextStyle(fontSize: 15)),
+      ])),
+    ]),
+  );
 }
 
 class _ResultCard extends StatelessWidget {
@@ -319,70 +442,77 @@ class _ResultCard extends StatelessWidget {
   final String translated;
   final KeyInformation? info;
   final int? totalMs;
-  final String? audioPath;
   final String note;
   final VoidCallback? onPlay;
-  const _ResultCard({
-    required this.original,
-    required this.translated,
-    this.info,
-    this.totalMs,
-    this.audioPath,
-    this.note = '',
-    this.onPlay,
-  });
-
+  const _ResultCard({required this.original, required this.translated,
+      this.info, this.totalMs, this.note = '', this.onPlay});
   @override
   Widget build(BuildContext context) {
     final i = info;
-    return Card(
-      margin: const EdgeInsets.only(top: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Original', style: Theme.of(context).textTheme.labelLarge),
-            Text(original),
-            const SizedBox(height: 8),
-            Text('Translation', style: Theme.of(context).textTheme.labelLarge),
-            Text(translated),
-            if (note.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  note,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            if (onPlay != null) ...[
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: onPlay,
-                icon: const Icon(Icons.volume_up),
-                label: const Text('Play audio'),
-              ),
-            ],
-            if (totalMs != null) ...[
-              const SizedBox(height: 8),
-              Text('Time: $totalMs ms'),
-            ],
-            if (i != null && i.categories.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text('Key information', style: Theme.of(context).textTheme.labelLarge),
-              Wrap(
-                spacing: 6,
-                children: i.categories.map((c) => Chip(label: Text(c))).toList(),
-              ),
-              if (i.negated) const Text('Negated'),
-              if (i.isQuestion) const Text('Question'),
-            ],
-          ],
-        ),
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Container(padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(color: FieldColors.surface,
+            borderRadius: BorderRadius.circular(4)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const _SectionLabel('ORIGINAL SPEECH'),
+          const SizedBox(height: 10),
+          SelectableText(original, style: const TextStyle(fontSize: 17, height: 1.4)),
+        ]),
       ),
-    );
+      const SizedBox(height: 8),
+      Container(padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(color: FieldColors.bone,
+            borderRadius: BorderRadius.circular(4)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(note.isEmpty ? 'TRANSLATION' : 'TRANSLATION UNAVAILABLE', style: const TextStyle(color: FieldColors.ink,
+              fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.4)),
+          const SizedBox(height: 12),
+          SelectableText(translated, style: const TextStyle(
+              color: FieldColors.ink, fontSize: 23,
+              fontWeight: FontWeight.w800, height: 1.25)),
+          if (note.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('Translation could not complete. Check the text before using it.',
+                style: TextStyle(color: Color(0xFF8C2823),
+                    fontSize: 14, fontWeight: FontWeight.w700)),
+          ],
+          if (onPlay != null) ...[
+            const SizedBox(height: 18),
+            FilledButton.icon(onPressed: onPlay,
+              icon: const Icon(Icons.volume_up_rounded, size: 23),
+              label: Text(note.isEmpty ? 'PLAY TRANSLATION' : 'PLAY AUDIO'),
+              style: FilledButton.styleFrom(backgroundColor: FieldColors.ink,
+                  foregroundColor: FieldColors.bone,
+                  minimumSize: const Size.fromHeight(54),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)))),
+          ],
+        ]),
+      ),
+      if (i != null && (i.entities.isNotEmpty || i.negated || i.isQuestion)) ...[
+        const SizedBox(height: 14),
+        const _SectionLabel('KEY INFORMATION'),
+        const SizedBox(height: 8),
+        Container(padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: FieldColors.surface,
+              borderRadius: BorderRadius.circular(4)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            ...i.entities.map((entity) => Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: Text(entity.category.toUpperCase() + '  /  ' + entity.label,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)))),
+            if (i.negated) const Text('NEGATION DETECTED',
+                style: TextStyle(color: FieldColors.lime, fontSize: 12,
+                    fontWeight: FontWeight.w800, letterSpacing: 1)),
+            if (i.isQuestion) const Padding(padding: EdgeInsets.only(top: 8),
+              child: Text('QUESTION DETECTED', style: TextStyle(
+                  color: FieldColors.muted, fontSize: 12,
+                  fontWeight: FontWeight.w800, letterSpacing: 1))),
+          ]),
+        ),
+      ],
+      if (totalMs != null) Padding(padding: const EdgeInsets.only(top: 10),
+        child: Text('Completed locally in $totalMs ms',
+            style: const TextStyle(color: FieldColors.muted, fontSize: 12))),
+    ]);
   }
 }
