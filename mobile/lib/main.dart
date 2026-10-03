@@ -498,7 +498,7 @@ class _ResultCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             ...i.entities.map((entity) => Padding(
               padding: const EdgeInsets.only(bottom: 9),
-              child: Text(entity.category.toUpperCase() + '  /  ' + entity.label,
+              child: Text('${entity.category.toUpperCase()}  /  ${entity.label}',
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)))),
             if (i.negated) const Text('NEGATION DETECTED',
                 style: TextStyle(color: FieldColors.lime, fontSize: 12,
