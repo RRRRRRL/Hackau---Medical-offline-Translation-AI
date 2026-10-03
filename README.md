@@ -7,8 +7,8 @@ FieldTalk translates communication; it does not diagnose, recommend treatment, o
 ## Current scope
 
 - Runs locally on one laptop: browser UI, Python backend, and model inference.
-- Supports English <-> Mandarin Chinese and English <-> Russian.
-- Language codes: `en`, `zh`, `ru`. Chinese <-> Russian is not enabled.
+- Supports English <-> Mandarin Chinese, English <-> Russian, and Chinese <-> Russian.
+- Language codes: `en`, `zh`, `ru`. Chinese <-> Russian is translated through an English pivot (ru -> en -> zh) because no direct Argos package exists.
 - Press Start recording, speak, then press Stop recording. Processing begins after recording stops; this is not simultaneous interpretation or streaming captions.
 - Phone deployment is future work, not part of this implementation.
 

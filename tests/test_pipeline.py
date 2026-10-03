@@ -29,6 +29,12 @@ def test_translation_contract():
     assert result.key_information == {}
 
 
+def test_translation_pivot_ru_zh():
+    result = translate_and_extract("Я аллергик.", "ru", "zh")
+    assert result.translation == "我对青霉素过敏。"
+    assert result.key_information == {}
+
+
 def test_tts_contract():
     path = text_to_speech("我对青霉素过敏。", "zh")
     with wave.open(str(path), "rb") as audio:

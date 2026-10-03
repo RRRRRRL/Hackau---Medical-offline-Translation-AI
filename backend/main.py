@@ -12,6 +12,8 @@ from backend.config import (
     ASR_DIR,
     AUDIO_DIR,
     MODE,
+    PIVOT_LANGUAGE,
+    PIVOT_PAIRS,
     SUPPORTED_PAIRS,
     VOICES,
     VOICES_DIR,
@@ -39,7 +41,7 @@ def health():
     components = {
         "asr": "ready" if (ASR_DIR / "model.bin").is_file() else "missing",
         "translation": (
-            "ready" if SUPPORTED_PAIRS <= installed else "missing"
+            "ready" if all(_pair_ready(source, target, installed) for source, target in SUPPORTED_PAIRS) else "missing"
         ),
         "tts": "ready" if all(
             (VOICES_DIR / f"{name}.onnx").is_file() and (VOICES_DIR / f"{name}.onnx.json").is_file()
@@ -47,6 +49,14 @@ def health():
         ) else "missing",
     }
     return {"mode": MODE, "ready": all(v == "ready" for v in components.values()), "components": components}
+
+
+def _pair_ready(source: str, target: str, installed: set) -> bool:
+    if (source, target) in installed:
+        return True
+    if (source, target) in PIVOT_PAIRS:
+        return (source, PIVOT_LANGUAGE) in installed and (PIVOT_LANGUAGE, target) in installed
+    return False
 
 
 @app.post("/process_audio", response_model=ProcessResult)
@@ -58,7 +68,7 @@ async def process_audio(
     if (source_language, target_language) not in SUPPORTED_PAIRS:
         raise HTTPException(
             400,
-            "Supported pairs: English ↔ Chinese and English ↔ Russian.",
+            "Supported pairs: English ↔ Chinese, English ↔ Russian, and Chinese ↔ Russian.",
         )
     suffix = Path(audio.filename or "").suffix.lower()
     if suffix not in ALLOWED_SUFFIXES:

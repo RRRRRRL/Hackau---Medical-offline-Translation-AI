@@ -21,4 +21,10 @@ SUPPORTED_PAIRS = {
     ("zh", "en"),
     ("en", "ru"),
     ("ru", "en"),
+    ("ru", "zh"),
+    ("zh", "ru"),
 }
+
+# Pairs without a direct Argos package are translated via an English pivot.
+PIVOT_LANGUAGE = "en"
+PIVOT_PAIRS = {("ru", "zh"), ("zh", "ru")}

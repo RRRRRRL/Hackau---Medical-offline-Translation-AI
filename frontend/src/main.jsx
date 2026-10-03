@@ -139,10 +139,8 @@ function App() {
             onChange={(event) => {
               const next = event.target.value;
               setSource(next);
-              if (next !== "en") {
-                setTarget("en");
-              } else if (target === "en") {
-                setTarget("zh");
+              if (next === target) {
+                setTarget(next === "zh" ? "en" : "zh");
               }
             }}
           >
@@ -161,10 +159,8 @@ function App() {
             onChange={(event) => {
               const next = event.target.value;
               setTarget(next);
-              if (next !== "en") {
-                setSource("en");
-              } else if (source === "en") {
-                setSource("zh");
+              if (next === source) {
+                setSource(next === "zh" ? "en" : "zh");
               }
             }}
           >
