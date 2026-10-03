@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Android: test and assemble debug",
+      "type": "shell",
+      "command": "${workspaceFolder}\\gradlew.bat",
+      "args": ["test", "assembleDebug"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gradle"]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "components": [
+    {
+      "type": "asr",
+      "runtime": "whisper.cpp",
+      "files": [
+        { "path": "asr/ggml-base.bin", "sha256": "REPLACE_WITH_64_CHARACTER_SHA256" }
+      ]
+    },
+    {
+      "type": "translation",
+      "runtime": "mlkit-on-device",
+      "files": [
+        { "path": "translation/PROVISIONED", "sha256": "REPLACE_WITH_64_CHARACTER_SHA256" }
+      ]
+    },
+    {
+      "type": "tts",
+      "runtime": "android-offline-voice",
+      "files": [
+        { "path": "tts/PROVISIONED", "sha256": "REPLACE_WITH_64_CHARACTER_SHA256" }
+      ]
+    }
+  ]
+}
