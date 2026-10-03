@@ -9,7 +9,12 @@ def translate_and_extract(text: str, source_language: str, target_language: str)
     if not text.strip():
         raise ValueError("No text to translate.")
     if MODE == "mock":
-        translation = "我对青霉素过敏。" if target_language == "zh" else "I am allergic to penicillin."
+        mock_translations = {
+            "en": "I am allergic to penicillin.",
+            "zh": "我对青霉素过敏。",
+            "ru": "У меня аллергия на пенициллин.",
+        }
+        translation = mock_translations[target_language]
     elif MODE == "local":
         try:
             from argostranslate import package, translate

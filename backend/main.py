@@ -8,7 +8,14 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from backend.config import ASR_DIR, AUDIO_DIR, LANGUAGES, MODE, VOICES, VOICES_DIR
+from backend.config import (
+    ASR_DIR,
+    AUDIO_DIR,
+    MODE,
+    SUPPORTED_PAIRS,
+    VOICES,
+    VOICES_DIR,
+)
 from backend.models.asr import ModelUnavailable, speech_to_text
 from backend.models.translation import translate_and_extract
 from backend.models.tts import text_to_speech

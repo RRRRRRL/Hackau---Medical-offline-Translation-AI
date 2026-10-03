@@ -11,7 +11,11 @@ from backend.models.tts import text_to_speech
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--audio", type=Path, required=True)
-    parser.add_argument("--language", choices=("en", "zh"), required=True)
+    parser.add_argument(
+        "--language",
+        choices=("en", "zh", "ru"),
+        required=True,
+    )
     parser.add_argument("--tts-text", default=None)
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--out", type=Path, default=Path("speech_timings.csv"))
