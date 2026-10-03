@@ -10,6 +10,15 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, build_opener, ProxyHandler, HTTPRedirectHandler
 from pypinyin import Style, lazy_pinyin
+import opencc
+
+_to_simplified = opencc.OpenCC("t2s.json")
+
+
+def comparison_text(text):
+    simplified = _to_simplified.convert(text)
+    return re.sub(r"[\s，。！？、；：,.!?;:]", "", simplified)
+
 
 MAX_TEXT = 600
 _gate = Lock()
@@ -149,23 +158,41 @@ def _protected(text):
     return numbers, negation, units
 
 def validate_proposal(raw, obj):
-    if not isinstance(obj, dict) or set(obj) != {"suggested_text", "needs_repeat"}:
+    if not isinstance(obj, dict) or set(obj) != {
+        "suggested_text",
+        "needs_repeat",
+    }:
         raise ReviewUnavailable("Unexpected suggestion structure.")
+
     suggestion = obj["suggested_text"]
-    if not isinstance(suggestion, str) or type(obj["needs_repeat"]) is not bool:
+
+    if (
+        not isinstance(suggestion, str)
+        or type(obj["needs_repeat"]) is not bool
+    ):
         raise ReviewUnavailable("Unexpected suggestion types.")
+
     suggestion = suggestion.strip()
+
     if not suggestion or len(suggestion) > MAX_TEXT:
         raise ReviewUnavailable("Empty or oversized suggestion.")
+
     model_candidate = suggestion
     model_requested_repeat = obj["needs_repeat"]
     block_reasons = []
 
-    if _protected(raw) != _protected(model_candidate):
+    # Compare protected values using the same Chinese script.
+    normalized_raw = _to_simplified.convert(raw)
+    normalized_candidate = _to_simplified.convert(model_candidate)
+
+    if _protected(normalized_raw) != _protected(normalized_candidate):
         block_reasons.append("number_unit_or_negation_changed")
 
+    # Ignore script, punctuation, and whitespace differences here.
     similarity = difflib.SequenceMatcher(
-        None, raw, model_candidate
+        None,
+        comparison_text(raw),
+        comparison_text(model_candidate),
     ).ratio()
 
     if similarity < 0.65:
@@ -176,21 +203,46 @@ def validate_proposal(raw, obj):
 
     if needs_repeat:
         suggestion = raw
-    for tag, a, b, c, d in difflib.SequenceMatcher(None, raw, suggestion).get_opcodes():
+
+    # Keep this initialization: the previous commit removed it.
+    changes = []
+
+    # Display actual differences, not normalized differences.
+    for tag, a, b, c, d in difflib.SequenceMatcher(
+        None,
+        raw,
+        suggestion,
+    ).get_opcodes():
         if tag != "equal":
-            changes.append({"original": raw[a:b], "suggested": suggestion[c:d]})
+            changes.append({
+                "original": raw[a:b],
+                "suggested": suggestion[c:d],
+            })
+
+    if blocked:
+        status = "blocked"
+    elif needs_repeat:
+        status = "repeat"
+    elif changes:
+        status = "suggested"
+    else:
+        status = "unchanged"
+
     return {
         "original_text": raw,
         "suggested_text": suggestion,
         "changes": changes,
         "needs_repeat": needs_repeat,
         "requires_confirmation": True,
-        "status": "blocked" if blocked else "repeat" if needs_repeat else "suggested" if changes else "unchanged",
+        "status": status,
         "model_candidate": model_candidate,
         "model_requested_repeat": model_requested_repeat,
         "block_reasons": block_reasons,
         "edit_similarity": round(similarity, 3),
-        "notice": "Unverified text-only suggestion. Confirm with the speaker; guards do not establish medical correctness.",
+        "notice": (
+            "Unverified text-only suggestion. Confirm with the speaker; "
+            "guards do not establish medical correctness."
+        ),
     }
 
 def review_transcript(text, language, question_context=""):
