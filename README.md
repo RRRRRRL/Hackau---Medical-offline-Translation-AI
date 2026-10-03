@@ -9,13 +9,13 @@ FieldTalk translates communication; it does not diagnose, recommend treatment, o
 - Runs locally on one laptop: browser UI, Python backend, and model inference.
 - Supports English <-> Mandarin Chinese, English <-> Russian, and Chinese <-> Russian.
 - Language codes: `en`, `zh`, `ru`. Chinese <-> Russian is translated through an English pivot (ru -> en -> zh) because no direct Argos package exists.
-- Press Start recording, speak, then press Stop recording. Processing begins after recording stops; this is not simultaneous interpretation or streaming captions.
+- The frontend offers Quick Questions, Yes / No, Free Conversation, and an explicit patient-stated Handoff. Hold to Speak records one turn; processing begins on release. This is not simultaneous interpretation or streaming captions.
 - Phone deployment is future work, not part of this implementation.
 
 ## Architecture
 
 ```text
-React/Vite microphone UI
+React/Vite emergency communication workflows
   -> multipart POST /process_audio
   -> FastAPI: ASR -> translation -> TTS
   -> result JSON + local WAV URL
@@ -25,7 +25,7 @@ React/Vite microphone UI
 | Component | Implementation |
 | --- | --- |
 | ASR | Multilingual faster-whisper base, local CPU int8 |
-| Translation | Direct installed Argos Translate packages |
+| Translation | Installed Argos Translate packages; Chinese <-> Russian uses an English pivot |
 | TTS | Cached in-process PiperVoice synthesis |
 | Frontend | React/Vite on localhost |
 
@@ -46,12 +46,12 @@ Confidence is null when no calibrated utterance confidence is available. The eme
 backend/config.py          Paths, mode, voices, supported pairs
 backend/main.py            API, health checks, audio serving
 backend/models/            ASR, translation, TTS and NLP adapters
-frontend/                  React/Vite microphone interface
+frontend/                  React/Vite emergency workflows and frontend tests
 scripts/download_models.py Online preparation of model assets
 scripts/benchmark_speech.py ASR/TTS timing benchmark
- tests/                    Mock pipeline and dependency-stub tests
+tests/                     Mock pipeline and dependency-stub tests
 models_local/              Downloaded models, ignored by Git
- generated_audio/          Output WAV files, ignored by Git
+generated_audio/           Output WAV files, ignored by Git
 ```
 
 ## Prepare the laptop
@@ -61,7 +61,7 @@ The commands below use Windows PowerShell from the repository root. Internet is 
 For a fresh checkout:
 
 ```powershell
-git clone --branch test https://github.com/RRRRRRL/Hackau---Medical-offline-Translation-AI.git
+git clone --branch integration/full-system https://github.com/RRRRRRL/Hackau---Medical-offline-Translation-AI.git
 cd Hackau---Medical-offline-Translation-AI
 ```
 
@@ -114,7 +114,7 @@ cd frontend
 npm run dev
 ```
 
-Open the URL printed by Vite, normally http://127.0.0.1:5173. Use the frontend URL, not backend port 8000, and allow microphone access. Select a supported direction, record a short utterance, stop, and inspect both texts. If autoplay is blocked, use the audio player's Play button. Do not record while output speech is playing.
+Open the URL printed by Vite, normally http://127.0.0.1:5173. Use the frontend URL, not backend port 8000, and allow microphone access. Select a supported language pair, open Free Conversation, choose who is speaking, hold the button for an utterance, and release to process. Use Play translation for the returned WAV. Do not record while output speech is playing.
 
 Example: English -> Russian, say "Where does it hurt?"; then reverse the direction with a consenting Russian speaker. Repeat English <-> Chinese. Use fictional examples, not patient records.
 
@@ -124,7 +124,7 @@ Check health in another terminal:
 Invoke-RestMethod http://127.0.0.1:8000/health | ConvertTo-Json -Depth 5
 ```
 
-Expected mode is local. `ready: true` checks required asset/package presence; it does not prove successful inference, clinical accuracy, or absence of network traffic. Refresh the frontend after preparing assets because it fetches health on mount.
+Expected mode is local. `ready: true` checks required asset/package presence; it does not prove successful inference, clinical accuracy, or absence of network traffic. The frontend refreshes health periodically.
 
 Stop the backend with Ctrl+C and restart after changing code or environment variables; the command above does not enable auto-reload.
 
@@ -137,14 +137,14 @@ $env:FIELDTALK_MODE = 'mock'
 .\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-Mock mode returns fixed allergy text and an audible tone, not recognized speech or translated spoken audio. The UI labels it MOCK DEMO. It checks routing and display only. The default mode is mock; always set local explicitly for real-model testing.
+Mock mode returns fixed allergy text and an audible tone, not recognized speech or translated spoken audio. The UI labels it Demo mode and does not allow mock speech into Handoff. It checks routing and display only. The default mode is mock; always set local explicitly for real-model testing.
 
 ## Verify offline operation
 
 1. Finish all installation and model downloads while online.
 2. Stop both servers, disable Wi-Fi and disconnect Ethernet.
 3. Restart both servers without rerunning downloads and reload the local frontend.
-4. Complete all four supported directions and record observed failures and timings.
+4. Complete the supported directions needed for the demo and record observed failures and timings.
 5. Use an OS network monitor if asserting that no external connections occur.
 
 No latency guarantee is made. First use may include model initialization. `timings_ms` measures backend stages, not microphone recording, browser upload/playback or human confirmation time.
@@ -156,6 +156,7 @@ Servers are not needed to run automated tests:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 cd frontend
+npm test
 npm run build
 cd ..
 ```
@@ -191,9 +192,9 @@ Model paths can be overridden with FIELDTALK_MODEL_DIR, FIELDTALK_ASR_DIR and FI
 
 ## Safety, privacy and limitations
 
-The backend is intended for one local demo user. Audio uploads are temporarily stored and removed after processing. Synthesized WAV files remain in generated_audio until manually deleted; this is not an all-ephemeral pipeline. The UI currently attempts playback automatically and has no transcript-edit/confirmation stage. Confirm critical statements separately. Do not upload private medical data to the public repository.
+The backend is intended for one local demo user. Audio uploads are temporarily stored and removed after processing. Synthesized WAV files remain in generated_audio until manually deleted; this is not an all-ephemeral pipeline. The UI shows the returned text and requires the responder to add real patient speech to Handoff explicitly. Confirm critical statements separately. Do not upload private medical data to the public repository.
 
-Evaluate negation, medication names, numbers, noise and unfamiliar speakers. Chinese voice output is Mandarin, not Cantonese validation. Accuracy and offline behavior must be demonstrated with actual models. Quick-question content is placeholder data and is not currently shown in the UI.
+Evaluate negation, medication names, numbers, noise and unfamiliar speakers. Chinese voice output is Mandarin, not Cantonese validation. Accuracy and offline behavior must be demonstrated with actual models. Quick Question phrases are visible in the UI but have not been clinically reviewed; their audio requires an installed local browser voice. See [frontend/README.md](frontend/README.md).
 
 ## Credits and licenses
 

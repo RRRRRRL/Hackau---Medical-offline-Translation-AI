@@ -2,7 +2,7 @@
 import subprocess
 import sys
 
-from backend.config import ASR_DIR, SUPPORTED_PAIRS, VOICES, VOICES_DIR
+from backend.config import ASR_DIR, PIVOT_PAIRS, SUPPORTED_PAIRS, VOICES, VOICES_DIR
 
 
 def main():
@@ -13,11 +13,11 @@ def main():
     VOICES_DIR.mkdir(parents=True, exist_ok=True)
     print("Downloading multilingual faster-whisper base model...")
     download_model("base", output_dir=str(ASR_DIR))
-    print("Installing Argos English/Chinese translation packages...")
+    print("Installing direct Argos translation packages...")
     package.update_package_index()
     available = package.get_available_packages()
     installed = {(p.from_code, p.to_code) for p in package.get_installed_packages()}
-    for source, target in sorted(SUPPORTED_PAIRS):
+    for source, target in sorted(SUPPORTED_PAIRS - PIVOT_PAIRS):
         if (source, target) in installed:
             continue
         match = next((p for p in available if p.from_code == source and p.to_code == target), None)
