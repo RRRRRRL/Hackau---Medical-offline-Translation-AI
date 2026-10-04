@@ -70,29 +70,69 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _totalMs;
   String _translationNote = '';
   List<Map<String, String>> _questions = [];
+  List<Map<String, String>> _yesNoQuestions = [];
+  String? _speakingId;
 
   @override
   void initState() {
     super.initState();
+    _player.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _speakingId = null);
+    });
     _loadAssets();
   }
 
   Future<void> _loadAssets() async {
     try {
       await _nlp.load();
-      final raw = await rootBundle.loadString('assets/data/quick_questions.json');
-      final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
-      _questions = list
-          .map((e) => {
-                'id': e['id'] as String,
-                'en': e['en'] as String,
-                'ru': e['ru'] as String,
-                'zh': e['zh'] as String,
-              })
-          .toList();
+      _questions = await _loadQuestionList('assets/data/quick_questions.json');
+      _yesNoQuestions = await _loadQuestionList('assets/data/yes_no_questions.json');
       if (mounted) setState(() => _modelsReady = true);
     } catch (e) {
       if (mounted) setState(() => _error = 'Failed to load linguistic data: $e');
+    }
+  }
+
+  /// Load a list of questions with en/ru/zh text from a bundled JSON asset.
+  Future<List<Map<String, String>>> _loadQuestionList(String asset) async {
+    final raw = await rootBundle.loadString(asset);
+    return (jsonDecode(raw) as List)
+        .cast<Map<String, dynamic>>()
+        .map((e) => {
+              'id': e['id'] as String,
+              'en': e['en'] as String,
+              'ru': e['ru'] as String,
+              'zh': e['zh'] as String,
+            })
+        .toList();
+  }
+
+  /// Speak a question out loud in [language] via TTS. Shows its text in the
+  /// result card so the responder can see what is being said.
+  Future<void> _speakQuestion(Map<String, String> q, String language) async {
+    final text = q[language] ?? q['en'] ?? '';
+    if (text.isEmpty) return;
+    setState(() {
+      _speakingId = q['id'];
+      _original = text;
+      _translated = text;
+      _info = null;
+      _audioPath = null;
+      _error = null;
+    });
+    try {
+      final path = await _tts.synthesize(text, language);
+      if (!mounted) return;
+      setState(() => _audioPath = path);
+      // _speakingId clears when playback finishes (onPlayerComplete).
+      await _player.play(DeviceFileSource(path));
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Could not speak: $e';
+          _speakingId = null;
+        });
+      }
     }
   }
 
@@ -233,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(_error!, style: const TextStyle(color: Colors.red)),
               ),
-            if (_original != null)
+            if (_original != null && _translated != null)
               _ResultCard(
                 original: _original!,
                 translated: _translated!,
@@ -245,20 +285,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? null
                     : () => _player.play(DeviceFileSource(_audioPath!)),
               ),
+            const SizedBox(height: 20),
+            _QuestionSection(
+              title: 'Quick questions',
+              subtitle: 'Tap to speak the question aloud in the source language.',
+              icon: Icons.question_answer,
+              questions: _questions,
+              source: _source,
+              speakingId: _speakingId,
+              onSpeak: _speakQuestion,
+            ),
             const SizedBox(height: 16),
-            Text('Quick questions', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _questions.map((q) {
-                return ActionChip(
-                  label: Text(q[_source]!),
-                  onPressed: () {
-                    _setPair(_source, _source == 'en' ? 'ru' : 'en');
-                  },
-                );
-              }).toList(),
+            _QuestionSection(
+              title: 'Yes / No questions',
+              subtitle: 'Tap to ask a binary (yes/no) medical question out loud.',
+              icon: Icons.check_circle_outline,
+              questions: _yesNoQuestions,
+              source: _source,
+              speakingId: _speakingId,
+              onSpeak: _speakQuestion,
             ),
           ],
         ),
@@ -314,6 +359,73 @@ class _LanguageSelector extends StatelessWidget {
   }
 }
 
+/// A titled card holding a Wrap of speakable question chips, clearly separated
+/// from other sections on the screen. Only the chip currently being spoken is
+/// disabled (shows a spinner); all others stay tappable.
+class _QuestionSection extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<Map<String, String>> questions;
+  final String source;
+  final String? speakingId;
+  final void Function(Map<String, String>, String) onSpeak;
+
+  const _QuestionSection({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.questions,
+    required this.source,
+    required this.speakingId,
+    required this.onSpeak,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: questions.map((q) {
+                final label = q[source] ?? q['en'] ?? '';
+                final speaking = speakingId == q['id'];
+                return ActionChip(
+                  avatar: speaking
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : null,
+                  label: Text(label),
+                  onPressed: speaking ? null : () => onSpeak(q, source),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ResultCard extends StatelessWidget {
   final String original;
   final String translated;
@@ -344,9 +456,11 @@ class _ResultCard extends StatelessWidget {
           children: [
             Text('Original', style: Theme.of(context).textTheme.labelLarge),
             Text(original),
-            const SizedBox(height: 8),
-            Text('Translation', style: Theme.of(context).textTheme.labelLarge),
-            Text(translated),
+            if (translated != original) ...[
+              const SizedBox(height: 8),
+              Text('Translation', style: Theme.of(context).textTheme.labelLarge),
+              Text(translated),
+            ],
             if (note.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),

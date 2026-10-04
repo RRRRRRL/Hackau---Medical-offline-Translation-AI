@@ -1,0 +1,92 @@
+[
+  {
+    "id": "headache",
+    "en": "Do you have a headache?",
+    "ru": "У вас болит голова?",
+    "zh": "你头痛吗？"
+  },
+  {
+    "id": "dizzy",
+    "en": "Do you feel dizzy?",
+    "ru": "Вы чувствуете головокружение?",
+    "zh": "你感到头晕吗？"
+  },
+  {
+    "id": "breathing_ok",
+    "en": "Can you breathe normally?",
+    "ru": "Вы можете нормально дышать?",
+    "zh": "你能正常呼吸吗？"
+  },
+  {
+    "id": "pain_chest",
+    "en": "Does your chest hurt?",
+    "ru": "У вас болит грудь?",
+    "zh": "你胸口疼吗？"
+  },
+  {
+    "id": "bleeding",
+    "en": "Are you bleeding?",
+    "ru": "У вас кровотечение?",
+    "zh": "你在流血吗？"
+  },
+  {
+    "id": "conscious",
+    "en": "Are you conscious?",
+    "ru": "Вы в сознании?",
+    "zh": "你意识清醒吗？"
+  },
+  {
+    "id": "nausea",
+    "en": "Do you feel nauseous?",
+    "ru": "Вас тошнит?",
+    "zh": "你感到恶心吗？"
+  },
+  {
+    "id": "allergy",
+    "en": "Are you allergic to anything?",
+    "ru": "У вас есть аллергия?",
+    "zh": "你有过敏吗？"
+  },
+  {
+    "id": "diabetes",
+    "en": "Do you have diabetes?",
+    "ru": "У вас диабет?",
+    "zh": "你有糖尿病吗？"
+  },
+  {
+    "id": "asthma",
+    "en": "Do you have asthma?",
+    "ru": "У вас астма?",
+    "zh": "你有哮喘吗？"
+  },
+  {
+    "id": "pregnant",
+    "en": "Are you pregnant?",
+    "ru": "Вы беременны?",
+    "zh": "你怀孕了吗？"
+  },
+  {
+    "id": "medication",
+    "en": "Are you taking any medication?",
+    "ru": "Вы принимаете лекарства?",
+    "zh": "你在服药吗？"
+  },
+  {
+    "id": "swallow",
+    "en": "Can you swallow?",
+    "ru": "Вы можете глотать?",
+    "zh": "你能吞咽吗？"
+  },
+  {
+    "id": "head_injury",
+    "en": "Did you hit your head?",
+    "ru": "Вы ударились головой?",
+    "zh": "你撞到头了吗？"
+  },
+  {
+    "id": "numb",
+    "en": "Do you feel numb anywhere?",
+    "ru": "Вы чувствуете онемение где-нибудь?",
+    "zh": "你哪里感到麻木吗？"
+  }
+]

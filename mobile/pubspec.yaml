@@ -71,6 +71,7 @@ flutter:
   assets:
     - assets/data/quick_questions.json
     - assets/data/glossary.json
+    - assets/data/yes_no_questions.json
     - assets/models/whisper/
     - assets/models/paraformer/
     - assets/models/voices/en/
